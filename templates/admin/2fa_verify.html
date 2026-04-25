@@ -1,0 +1,46 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}2FA Verification{% endblock %}
+{% block content_title %}<h1>Two-Factor Authentication</h1>{% endblock %}
+
+{% block content %}
+<div style="max-width:480px;margin:24px auto;padding:32px;background:#fff;border:1px solid #ddd;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+  <div style="text-align:center;margin-bottom:24px;">
+    <div style="display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:14px;background:#fef3c7;margin-bottom:12px;">
+      <span style="font-size:28px;">&#128272;</span>
+    </div>
+    <h2 style="margin:0 0 8px;color:#1a1a2e;">Enter Authenticator Code</h2>
+    <p style="margin:0;color:#666;font-size:14px;">Open Google Authenticator and enter the 6-digit code for <strong>QRGenie Admin</strong>.</p>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div style="padding:12px 16px;margin:0 0 16px;border-radius:8px;font-size:14px;
+        {% if message.tags == 'error' %}background:#fef2f2;color:#dc2626;border:1px solid #fecaca;
+        {% elif message.tags == 'success' %}background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;
+        {% else %}background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;{% endif %}">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+    <label for="code" style="display:block;margin-bottom:6px;font-weight:600;font-size:14px;color:#333;">TOTP Code:</label>
+    <input type="text" name="code" id="code" maxlength="6" pattern="\d{6}"
+           placeholder="000000" autocomplete="one-time-code" inputmode="numeric"
+           style="font-size:28px;letter-spacing:10px;text-align:center;width:100%;padding:14px;box-sizing:border-box;
+                  border:2px solid #d1d5db;border-radius:10px;font-family:monospace;outline:none;transition:border-color 0.2s;"
+           onfocus="this.style.borderColor='#f59e0b'" onblur="this.style.borderColor='#d1d5db'"
+           required autofocus>
+    <button type="submit"
+            style="display:block;width:100%;margin-top:20px;padding:14px;background:#417690;
+                   color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;
+                   transition:background 0.2s;"
+            onmouseover="this.style.background='#36647d'" onmouseout="this.style.background='#417690'">
+      Verify
+    </button>
+  </form>
+</div>
+{% endblock %}

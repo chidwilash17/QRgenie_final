@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Opening App…</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 40px 32px;
+      text-align: center;
+      max-width: 380px;
+      width: 100%;
+    }
+    .icon {
+      width: 64px; height: 64px;
+      margin: 0 auto 20px;
+      background: rgba(99,130,255,0.15);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon svg { width: 32px; height: 32px; color: #818cf8; }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .sub { font-size: 14px; color: #94a3b8; margin-bottom: 24px; line-height: 1.5; }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: #818cf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .btn {
+      display: inline-block;
+      padding: 12px 28px;
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #4f46e5; }
+    .btn-secondary {
+      display: block;
+      margin-top: 12px;
+      color: #94a3b8;
+      font-size: 13px;
+      text-decoration: none;
+    }
+    .btn-secondary:hover { color: #e2e8f0; }
+    .hidden { display: none; }
+    .platform-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: rgba(99,130,255,0.15);
+      border: 1px solid rgba(99,130,255,0.2);
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #818cf8;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+        <polyline points="15 3 21 3 21 9"/>
+        <line x1="10" y1="14" x2="21" y2="3"/>
+      </svg>
+    </div>
+
+    <div class="platform-badge" id="platform-badge">{{ platform|upper }}</div>
+
+    <!-- Loading state -->
+    <div id="loading-state">
+      <h1>Opening App…</h1>
+      <p class="sub">Attempting to launch the app. If nothing happens, tap the button below.</p>
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Fallback state (shown after timeout) -->
+    <div id="fallback-state" class="hidden">
+      <h1>App Not Found</h1>
+      <p class="sub">The app didn't open. You can install it or continue to the web version.</p>
+      {% if fallback_url %}
+        <a class="btn" href="{{ fallback_url }}">Continue</a>
+      {% endif %}
+    </div>
+
+    {% if fallback_url %}
+      <a class="btn-secondary" href="{{ fallback_url }}" id="fallback-link">
+        Skip → go to web version
+      </a>
+    {% endif %}
+  </div>
+
+  <script>
+    (function() {
+      var deepLink = "{{ deep_link|escapejs }}";
+      var fallbackUrl = "{{ fallback_url|escapejs }}";
+      var timeout = 2500; // ms to wait before showing fallback
+
+      if (!deepLink && fallbackUrl) {
+        // No deep link (desktop) — redirect immediately
+        window.location.href = fallbackUrl;
+        return;
+      }
+
+      if (!deepLink) return;
+
+      // Track visibility change — if app opens, page goes hidden
+      var appOpened = false;
+      document.addEventListener('visibilitychange', function() {
+        if (document.hidden) appOpened = true;
+      });
+
+      // Attempt deep link via hidden iframe (iOS) or window.location (Android/other)
+      var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+      if (isIOS) {
+        // iOS: use window.location for Universal Links
+        window.location.href = deepLink;
+      } else {
+        // Android / other: try intent or direct
+        var iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = deepLink;
+        document.body.appendChild(iframe);
+
+        // Also set location as backup
+        setTimeout(function() {
+          if (!appOpened) window.location.href = deepLink;
+        }, 100);
+      }
+
+      // After timeout, if app didn't open → show fallback
+      setTimeout(function() {
+        if (!appOpened && !document.hidden) {
+          document.getElementById('loading-state').classList.add('hidden');
+          document.getElementById('fallback-state').classList.remove('hidden');
+
+          // Auto-redirect to fallback after 3 more seconds
+          if (fallbackUrl) {
+            setTimeout(function() {
+              if (!document.hidden) window.location.href = fallbackUrl;
+            }, 3000);
+          }
+        }
+      }, timeout);
+    })();
+  </script>
+</body>
+</html>

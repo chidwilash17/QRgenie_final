@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ vcard.full_name }} — Digital Business Card</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#0f172a;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.card{background:#1e293b;border-radius:24px;max-width:420px;width:100%;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.5);position:relative}
+.header{height:140px;position:relative;display:flex;align-items:flex-end;justify-content:center}
+.header::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,{{ vcard.accent_color }},{{ vcard.accent_color }}99);opacity:.85}
+.avatar-wrap{position:relative;z-index:2;width:100px;height:100px;border-radius:50%;border:4px solid #1e293b;overflow:hidden;background:#334155;transform: translateY(50%);flex-shrink:0}
+.avatar-wrap img{width:100%;height:100%;object-fit:cover}
+.avatar-wrap .initials{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:#fff;background:{{ vcard.accent_color }}}
+.body{padding:68px 28px 28px;text-align:center}
+.name{font-size:24px;font-weight:700;color:#f1f5f9;margin-bottom:4px}
+.title-org{color:#94a3b8;font-size:14px;margin-bottom:4px}
+.bio{color:#cbd5e1;font-size:13px;margin:12px 0 0;line-height:1.5}
+.divider{height:1px;background:#334155;margin:20px 0}
+.info-grid{display:flex;flex-direction:column;gap:12px;text-align:left}
+.info-row{display:flex;align-items:center;gap:12px;color:#e2e8f0}
+.info-row .icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px}
+.info-row .icon.email-icon{background:rgba(99,102,241,.15);color:#818cf8}
+.info-row .icon.phone-icon{background:rgba(34,197,94,.15);color:#4ade80}
+.info-row .icon.web-icon{background:rgba(59,130,246,.15);color:#60a5fa}
+.info-row .icon.loc-icon{background:rgba(251,146,60,.15);color:#fb923c}
+.info-row .icon.dept-icon{background:rgba(168,85,247,.15);color:#c084fc}
+.info-label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px}
+.info-value{font-size:14px;color:#e2e8f0;word-break:break-all}
+.info-value a{color:#818cf8;text-decoration:none}
+.info-value a:hover{text-decoration:underline}
+.socials{display:flex;justify-content:center;gap:12px;margin-top:20px;flex-wrap:wrap}
+.social-btn{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:18px;transition:transform .2s,opacity .2s}
+.social-btn:hover{transform:scale(1.1);opacity:.9}
+.social-btn.li{background:rgba(10,102,194,.2);color:#0a66c2}
+.social-btn.tw{background:rgba(29,161,242,.2);color:#1da1f2}
+.social-btn.gh{background:rgba(255,255,255,.1);color:#e2e8f0}
+.social-btn.ig{background:rgba(225,48,108,.15);color:#e1306c}
+.download-btn{display:block;margin:24px auto 0;padding:14px 28px;border:none;border-radius:14px;font-size:15px;font-weight:600;color:#fff;cursor:pointer;text-decoration:none;text-align:center;transition:transform .2s,box-shadow .2s}
+.download-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(99,102,241,.3)}
+.footer{text-align:center;padding:0 28px 20px;color:#475569;font-size:11px}
+.footer a{color:#818cf8;text-decoration:none}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.card{animation:fadeUp .6s ease}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <div class="avatar-wrap">
+      {% if vcard.photo_url %}
+        <img src="{{ vcard.photo_url }}" alt="{{ vcard.full_name }}">
+      {% else %}
+        <div class="initials">{{ initials }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="name">{{ vcard.full_name }}</div>
+    {% if vcard.title or vcard.organization %}
+      <div class="title-org">
+        {% if vcard.title %}{{ vcard.title }}{% endif %}
+        {% if vcard.title and vcard.organization %} at {% endif %}
+        {% if vcard.organization %}{{ vcard.organization }}{% endif %}
+      </div>
+    {% endif %}
+    {% if vcard.department %}
+      <div class="title-org">{{ vcard.department }}</div>
+    {% endif %}
+    {% if vcard.bio %}
+      <div class="bio">{{ vcard.bio }}</div>
+    {% endif %}
+
+    <div class="divider"></div>
+
+    <div class="info-grid">
+      {% if vcard.email %}
+      <div class="info-row">
+        <div class="icon email-icon">&#9993;</div>
+        <div><div class="info-label">Email</div><div class="info-value"><a href="mailto:{{ vcard.email }}">{{ vcard.email }}</a></div></div>
+      </div>
+      {% endif %}
+      {% if vcard.email_work %}
+      <div class="info-row">
+        <div class="icon email-icon">&#9993;</div>
+        <div><div class="info-label">Work Email</div><div class="info-value"><a href="mailto:{{ vcard.email_work }}">{{ vcard.email_work }}</a></div></div>
+      </div>
+      {% endif %}
+      {% if vcard.phone %}
+      <div class="info-row">
+        <div class="icon phone-icon">&#9742;</div>
+        <div><div class="info-label">Phone</div><div class="info-value"><a href="tel:{{ vcard.phone }}">{{ vcard.phone }}</a></div></div>
+      </div>
+      {% endif %}
+      {% if vcard.phone_work %}
+      <div class="info-row">
+        <div class="icon phone-icon">&#9742;</div>
+        <div><div class="info-label">Work Phone</div><div class="info-value"><a href="tel:{{ vcard.phone_work }}">{{ vcard.phone_work }}</a></div></div>
+      </div>
+      {% endif %}
+      {% if vcard.phone_cell %}
+      <div class="info-row">
+        <div class="icon phone-icon">&#128241;</div>
+        <div><div class="info-label">Mobile</div><div class="info-value"><a href="tel:{{ vcard.phone_cell }}">{{ vcard.phone_cell }}</a></div></div>
+      </div>
+      {% endif %}
+      {% if vcard.website %}
+      <div class="info-row">
+        <div class="icon web-icon">&#127760;</div>
+        <div><div class="info-label">Website</div><div class="info-value"><a href="{{ vcard.website }}" target="_blank">{{ vcard.website }}</a></div></div>
+      </div>
+      {% endif %}
+      {% if address %}
+      <div class="info-row">
+        <div class="icon loc-icon">&#128205;</div>
+        <div><div class="info-label">Address</div><div class="info-value">{{ address }}</div></div>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if vcard.linkedin or vcard.twitter or vcard.github or vcard.instagram %}
+    <div class="socials">
+      {% if vcard.linkedin %}
+        <a href="{{ vcard.linkedin }}" target="_blank" class="social-btn li" title="LinkedIn">in</a>
+      {% endif %}
+      {% if vcard.twitter %}
+        <a href="https://twitter.com/{{ vcard.twitter }}" target="_blank" class="social-btn tw" title="Twitter">𝕏</a>
+      {% endif %}
+      {% if vcard.github %}
+        <a href="{{ vcard.github }}" target="_blank" class="social-btn gh" title="GitHub">⌨</a>
+      {% endif %}
+      {% if vcard.instagram %}
+        <a href="https://instagram.com/{{ vcard.instagram }}" target="_blank" class="social-btn ig" title="Instagram">◉</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <a href="{{ download_url }}" class="download-btn" style="background:linear-gradient(135deg,{{ vcard.accent_color }},{{ vcard.accent_color }}cc)">
+      &#128229; Add to Contacts
+    </a>
+  </div>
+
+  {% if vcard.note %}
+  <div style="padding:0 28px 20px">
+    <div style="background:#0f172a;border-radius:12px;padding:14px;color:#94a3b8;font-size:13px;line-height:1.5">
+      {{ vcard.note }}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="footer">
+    Powered by <a href="https://qrgenie.pythonanywhere.com" target="_blank">QR Genie</a>
+  </div>
+</div>
+</body>
+</html>

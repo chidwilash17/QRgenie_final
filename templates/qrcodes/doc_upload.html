@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>{{ title }} — Upload Documents</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--brand:{{ brand_color }};--bg:#0f1117;--card:#181a20;--border:#23262f;--text:#e0e0e0;--muted:#888}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.container{width:100%;max-width:480px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 24px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--brand)}
+.header{text-align:center;margin-bottom:20px}
+.icon{width:52px;height:52px;border-radius:14px;background:color-mix(in srgb,var(--brand) 15%,transparent);display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.icon svg{width:26px;height:26px;color:var(--brand)}
+h1{font-size:20px;font-weight:700;margin-bottom:4px}
+.desc{font-size:13px;color:var(--muted);line-height:1.5}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;font-weight:600}
+.field label .req{color:#ef4444;margin-left:2px}
+.field input,.field textarea{width:100%;background:#12141a;border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:14px;color:var(--text);outline:none;transition:border .2s}
+.field input:focus,.field textarea:focus{border-color:var(--brand)}
+.field textarea{resize:vertical;min-height:60px}
+
+/* Drop zone */
+.drop-zone{border:2px dashed var(--border);border-radius:12px;padding:28px 16px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 5%,transparent)}
+.drop-zone-icon{margin-bottom:10px}
+.drop-zone-icon svg{width:36px;height:36px;color:var(--muted)}
+.drop-zone p{font-size:13px;color:var(--muted)}
+.drop-zone .browse{color:var(--brand);text-decoration:underline;cursor:pointer}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.limits{font-size:11px;color:var(--muted);margin-top:6px;text-align:center}
+
+/* File list */
+.file-list{margin-top:12px}
+.file-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:#12141a;margin-bottom:6px}
+.file-item .fname{flex:1;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-item .fsize{font-size:11px;color:var(--muted);flex-shrink:0}
+.file-item .remove{background:none;border:none;color:#ef4444;cursor:pointer;padding:4px;border-radius:4px;font-size:16px;line-height:1}
+.file-item .remove:hover{background:#ef444420}
+
+.cat-select{margin-bottom:14px}
+.cat-select label{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;font-weight:600}
+.cat-chips{display:flex;flex-wrap:wrap;gap:6px}
+.cat-chip{padding:6px 14px;border-radius:20px;font-size:12px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;transition:all .2s}
+.cat-chip.active{background:var(--brand);border-color:var(--brand);color:#fff}
+
+.submit-btn{width:100%;padding:13px;border:none;border-radius:10px;background:var(--brand);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .2s;margin-top:6px}
+.submit-btn:hover{opacity:.9}
+.submit-btn:disabled{opacity:.5;cursor:not-allowed}
+.submit-btn .spinner{display:inline-block;width:16px;height:16px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
+
+/* Result */
+.result{text-align:center;padding:30px 10px;display:none}
+.result.show{display:block}
+.result-icon{width:64px;height:64px;border-radius:50%;margin:0 auto 16px;display:flex;align-items:center;justify-content:center}
+.result-icon.ok{background:#22c55e20}
+.result-icon.ok svg{color:#22c55e}
+.result-icon.err{background:#ef444420}
+.result-icon.err svg{color:#ef4444}
+.result h2{font-size:18px;margin-bottom:6px}
+.result p{font-size:13px;color:var(--muted)}
+
+.error-msg{background:#ef444415;border:1px solid #ef444430;border-radius:8px;padding:10px 14px;font-size:13px;color:#ef4444;margin-bottom:12px;display:none}
+.error-msg.show{display:block}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="card" id="formCard">
+    <div class="header">
+      <div class="icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      </div>
+      <h1>{{ title }}</h1>
+      {% if description %}<p class="desc">{{ description }}</p>{% endif %}
+    </div>
+
+    <div class="error-msg" id="errorMsg"></div>
+
+    <form id="uploadForm" enctype="multipart/form-data">
+
+      {% if require_name %}
+      <div class="field">
+        <label>Full Name <span class="req">*</span></label>
+        <input type="text" id="nameInput" placeholder="Enter your name" required/>
+      </div>
+      {% endif %}
+
+      {% if require_email %}
+      <div class="field">
+        <label>Email <span class="req">*</span></label>
+        <input type="email" id="emailInput" placeholder="you@example.com" required/>
+      </div>
+      {% endif %}
+
+      {% if require_phone %}
+      <div class="field">
+        <label>Phone <span class="req">*</span></label>
+        <input type="tel" id="phoneInput" placeholder="+1 (555) 000-0000" required/>
+      </div>
+      {% endif %}
+
+      {% if allowed_types %}
+      <div class="cat-select">
+        <label>Document Category</label>
+        <div class="cat-chips" id="catChips">
+          {% for t in allowed_types %}
+          <button type="button" class="cat-chip" data-cat="{{ t }}">{{ t|title }}</button>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" multiple />
+        <div class="drop-zone-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <p>Drag files here or <span class="browse">browse</span></p>
+        <p class="limits">Max {{ max_files }} files &middot; {{ max_file_size_mb }} MB each &middot; {{ allowed_extensions }}</p>
+      </div>
+
+      <div class="file-list" id="fileList"></div>
+
+      <div class="field" style="margin-top:14px">
+        <label>Notes</label>
+        <textarea id="notesInput" placeholder="Optional notes…" rows="2"></textarea>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submitBtn">
+        Upload Documents
+      </button>
+    </form>
+  </div>
+
+  <div class="result" id="resultOk">
+    <div class="result-icon ok">
+      <svg width="32" height="32" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h2 id="successTitle">Uploaded!</h2>
+    <p id="successMsg">{{ success_message }}</p>
+  </div>
+
+  <div class="result" id="resultErr">
+    <div class="result-icon err">
+      <svg width="32" height="32" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+    </div>
+    <h2>Upload Failed</h2>
+    <p id="errDetail">Something went wrong.</p>
+  </div>
+</div>
+
+<script>
+const UPLOAD_URL = '{{ upload_url }}';
+const MAX_FILES = {{ max_files }};
+const MAX_SIZE  = {{ max_file_size_mb }} * 1024 * 1024;
+
+let selectedFiles = [];
+let selectedCat = '';
+
+// Category chips
+document.querySelectorAll('.cat-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    selectedCat = chip.dataset.cat;
+  });
+});
+
+// Drop zone
+const dz = document.getElementById('dropZone');
+const fi = document.getElementById('fileInput');
+['dragenter','dragover'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.add('dragover'); }));
+['dragleave','drop'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.remove('dragover'); }));
+dz.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+fi.addEventListener('change', () => addFiles(fi.files));
+
+function addFiles(fileList) {
+  for (const f of fileList) {
+    if (selectedFiles.length >= MAX_FILES) break;
+    if (f.size > MAX_SIZE) { showError(`${f.name} exceeds size limit.`); continue; }
+    if (!selectedFiles.find(x => x.name === f.name && x.size === f.size)) selectedFiles.push(f);
+  }
+  renderFiles();
+}
+
+function renderFiles() {
+  const fl = document.getElementById('fileList');
+  fl.innerHTML = '';
+  selectedFiles.forEach((f, i) => {
+    const el = document.createElement('div');
+    el.className = 'file-item';
+    el.innerHTML = `<span class="fname">${esc(f.name)}</span><span class="fsize">${fmt(f.size)}</span><button type="button" class="remove" data-i="${i}">&times;</button>`;
+    fl.appendChild(el);
+  });
+  fl.querySelectorAll('.remove').forEach(b => b.addEventListener('click', () => { selectedFiles.splice(+b.dataset.i, 1); renderFiles(); }));
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function fmt(b) { return b < 1024 ? b+'B' : b < 1048576 ? (b/1024).toFixed(1)+'KB' : (b/1048576).toFixed(1)+'MB'; }
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 5000);
+}
+
+document.getElementById('uploadForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!selectedFiles.length) { showError('Please select at least one file.'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Uploading…';
+
+  const fd = new FormData();
+  const nameEl = document.getElementById('nameInput');
+  const emailEl = document.getElementById('emailInput');
+  const phoneEl = document.getElementById('phoneInput');
+  if (nameEl) fd.append('name', nameEl.value);
+  if (emailEl) fd.append('email', emailEl.value);
+  if (phoneEl) fd.append('phone', phoneEl.value);
+  fd.append('notes', document.getElementById('notesInput').value);
+  fd.append('category', selectedCat);
+  selectedFiles.forEach(f => fd.append('files', f));
+
+  try {
+    const res = await fetch(UPLOAD_URL, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (res.ok) {
+      document.getElementById('formCard').style.display = 'none';
+      document.getElementById('resultOk').classList.add('show');
+    } else {
+      const msg = typeof data.detail === 'object' ? Object.values(data.detail).flat().join(', ') : (data.detail || 'Upload failed.');
+      showError(msg);
+      btn.disabled = false;
+      btn.textContent = 'Upload Documents';
+    }
+  } catch {
+    showError('Network error. Please try again.');
+    btn.disabled = false;
+    btn.textContent = 'Upload Documents';
+  }
+});
+</script>
+</body>
+</html>

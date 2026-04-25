@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ program_name }} — Earn Points</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .card {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 24px;
+      padding: 36px 28px;
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+      backdrop-filter: blur(12px);
+    }
+    .icon {
+      width: 68px; height: 68px;
+      margin: 0 auto 18px;
+      background: rgba(139,92,246,0.2);
+      border: 1px solid rgba(139,92,246,0.3);
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon svg { width: 34px; height: 34px; color: #a78bfa; }
+    h1 { font-size: 22px; font-weight: 800; margin-bottom: 6px; color: #f5f3ff; }
+    .sub { font-size: 14px; color: #a5b4fc; margin-bottom: 24px; line-height: 1.5; }
+    .pts-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(139,92,246,0.2); border: 1px solid rgba(139,92,246,0.35);
+      border-radius: 20px; padding: 6px 14px; font-size: 13px;
+      font-weight: 700; color: #c4b5fd; margin-bottom: 24px;
+    }
+    .form-group { margin-bottom: 14px; text-align: left; }
+    .form-group label {
+      display: block; font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      color: #a5b4fc; margin-bottom: 6px;
+    }
+    input {
+      width: 100%; padding: 12px 14px; border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.08); color: #f1f5f9;
+      font-size: 15px; outline: none; transition: border-color 0.2s;
+    }
+    input:focus { border-color: #8b5cf6; }
+    input::placeholder { color: #64748b; }
+    .btn {
+      display: block; width: 100%; padding: 14px;
+      border: none; border-radius: 14px; cursor: pointer;
+      font-size: 15px; font-weight: 700;
+      background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+      color: #fff; margin-top: 8px;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Result states */
+    .result { display: none; }
+    .result.show { display: block; }
+    .result-success {
+      background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.3);
+      border-radius: 16px; padding: 24px 20px; margin-top: 20px;
+    }
+    .result-success h2 { color: #34d399; font-size: 18px; margin-bottom: 4px; }
+    .earned-pts { font-size: 48px; font-weight: 800; color: #a78bfa; margin: 8px 0; }
+    .total-pts { font-size: 13px; color: #94a3b8; }
+    .rewards-section { margin-top: 16px; text-align: left; }
+    .rewards-section h3 { font-size: 12px; color: #a5b4fc; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .reward-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 12px; border-radius: 10px;
+      background: rgba(255,255,255,0.05); margin-bottom: 6px;
+      font-size: 13px;
+    }
+    .reward-item .name { color: #e2e8f0; font-weight: 600; }
+    .reward-item .pts { color: #a78bfa; font-size: 11px; font-weight: 700; }
+    .reward-unlocked { background: rgba(16,185,129,0.15) !important; border: 1px solid rgba(16,185,129,0.3); }
+    .reward-unlocked .name { color: #34d399; }
+    .result-error {
+      background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 16px; padding: 20px; margin-top: 20px;
+      color: #fca5a5; font-size: 14px;
+    }
+    .continue-link {
+      display: inline-block; margin-top: 20px;
+      color: #a5b4fc; font-size: 13px; text-decoration: none;
+    }
+    .continue-link:hover { text-decoration: underline; }
+    .spinner {
+      display: none; width: 24px; height: 24px;
+      border: 3px solid rgba(255,255,255,0.15);
+      border-top-color: #a78bfa; border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto;
+    }
+    .spinner.show { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <!-- Star icon -->
+    <div class="icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+    </div>
+
+    <h1>{{ program_name }}</h1>
+    <p class="sub">Enter your email or phone to earn points!</p>
+
+    <div class="pts-badge">
+      ⭐ {{ points_per_scan }} point{{ points_per_scan|pluralize }} per scan
+      {% if bonus_points %} · 🎁 +{{ bonus_points }} welcome bonus{% endif %}
+    </div>
+
+    <!-- Form -->
+    <form id="loyaltyForm" onsubmit="return submitScan(event)">
+      <div class="form-group">
+        <label>Email or Phone Number</label>
+        <input type="text" id="identifier" placeholder="you@example.com or +1234567890" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Your Name (optional)</label>
+        <input type="text" id="memberName" placeholder="John Doe" autocomplete="name">
+      </div>
+      <button type="submit" class="btn" id="submitBtn">Earn Points ⭐</button>
+      <div class="spinner" id="spinner"></div>
+    </form>
+
+    <!-- Success result -->
+    <div class="result" id="successResult">
+      <div class="result-success">
+        <h2>Points Earned! 🎉</h2>
+        <div class="earned-pts" id="earnedPts">+0</div>
+        <div class="total-pts">Total: <strong id="totalPts">0</strong> points</div>
+        <div class="rewards-section" id="rewardsSection" style="display:none">
+          <h3>Rewards</h3>
+          <div id="rewardsList"></div>
+        </div>
+      </div>
+      {% if destination_url %}
+      <a href="{{ destination_url }}" class="continue-link">Continue to destination →</a>
+      {% endif %}
+    </div>
+
+    <!-- Error result -->
+    <div class="result" id="errorResult">
+      <div class="result-error" id="errorMsg"></div>
+      <button onclick="resetForm()" class="btn" style="margin-top:12px">Try Again</button>
+    </div>
+  </div>
+
+  <script>
+    var SCAN_URL = '{{ scan_url }}';
+    var REWARD_TIERS = JSON.parse('{{ reward_tiers_json|escapejs }}');
+
+    function submitScan(e) {
+      e.preventDefault();
+      var id = document.getElementById('identifier').value.trim();
+      if (!id) return false;
+      var name = document.getElementById('memberName').value.trim();
+      var btn = document.getElementById('submitBtn');
+      var spinner = document.getElementById('spinner');
+
+      btn.disabled = true;
+      btn.style.display = 'none';
+      spinner.classList.add('show');
+
+      fetch(SCAN_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({identifier: id, name: name || undefined})
+      })
+      .then(function(r) { return r.json().then(function(d) { return {ok: r.ok, data: d}; }); })
+      .then(function(res) {
+        spinner.classList.remove('show');
+        if (res.ok) {
+          showSuccess(res.data);
+        } else {
+          showError(res.data.detail || res.data.error || 'Something went wrong');
+        }
+      })
+      .catch(function() {
+        spinner.classList.remove('show');
+        showError('Network error — please try again');
+      });
+      return false;
+    }
+
+    function showSuccess(data) {
+      document.getElementById('loyaltyForm').style.display = 'none';
+      var earned = data.points_earned || 0;
+      var total = data.total_points || 0;
+      document.getElementById('earnedPts').textContent = '+' + earned;
+      document.getElementById('totalPts').textContent = total;
+
+      // Show reward tiers with unlock status
+      if (REWARD_TIERS.length > 0) {
+        var sec = document.getElementById('rewardsSection');
+        sec.style.display = 'block';
+        var list = document.getElementById('rewardsList');
+        list.innerHTML = '';
+        var nextRewards = data.next_rewards || [];
+        var nextNames = nextRewards.map(function(r) { return r.name; });
+        REWARD_TIERS.forEach(function(tier) {
+          var unlocked = total >= tier.points_required;
+          var div = document.createElement('div');
+          div.className = 'reward-item' + (unlocked ? ' reward-unlocked' : '');
+          div.innerHTML = '<span class="name">' + (unlocked ? '✅ ' : '🔒 ') + tier.name +
+            (tier.description ? ' — ' + tier.description : '') +
+            '</span><span class="pts">' + tier.points_required + ' pts</span>';
+          list.appendChild(div);
+        });
+      }
+
+      document.getElementById('successResult').classList.add('show');
+    }
+
+    function showError(msg) {
+      document.getElementById('loyaltyForm').style.display = 'none';
+      document.getElementById('errorMsg').textContent = msg;
+      document.getElementById('errorResult').classList.add('show');
+    }
+
+    function resetForm() {
+      document.getElementById('errorResult').classList.remove('show');
+      document.getElementById('successResult').classList.remove('show');
+      document.getElementById('loyaltyForm').style.display = 'block';
+      var btn = document.getElementById('submitBtn');
+      btn.style.display = 'block';
+      btn.disabled = false;
+    }
+  </script>
+</body>
+</html>

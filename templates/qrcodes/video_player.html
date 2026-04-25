@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{{ title }} — QRGenie Video Player</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+
+    <!-- Video.js from CDN -->
+    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet">
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --border: rgba(255,255,255,0.08);
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --accent: #8B5CF6;
+            --accent-glow: rgba(139,92,246,0.3);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Top bar ── */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            z-index: 100;
+        }
+
+        .toolbar-icon {
+            width: 24px;
+            height: 24px;
+            color: var(--accent);
+            flex-shrink: 0;
+        }
+
+        .toolbar-title {
+            flex: 1;
+            min-width: 0;
+            font-size: 15px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .toolbar-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .toolbar-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            text-decoration: none;
+        }
+        .toolbar-btn:hover {
+            background: rgba(139,92,246,0.15);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .divider {
+            width: 1px;
+            height: 24px;
+            background: var(--border);
+            flex-shrink: 0;
+        }
+
+        /* ── Player container ── */
+        .player-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        /* Video.js custom theme */
+        .video-js {
+            width: 100%;
+            height: 100%;
+            max-width: 1280px;
+            max-height: calc(100vh - 120px);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .video-js .vjs-big-play-button {
+            background-color: var(--accent) !important;
+            border: none !important;
+            border-radius: 50% !important;
+            width: 80px !important;
+            height: 80px !important;
+            line-height: 80px !important;
+            font-size: 40px !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            transition: transform 0.2s, box-shadow 0.2s !important;
+        }
+        .video-js .vjs-big-play-button:hover {
+            transform: translate(-50%, -50%) scale(1.1) !important;
+            box-shadow: 0 0 40px var(--accent-glow) !important;
+        }
+
+        .video-js .vjs-control-bar {
+            background: linear-gradient(transparent, rgba(0,0,0,0.85)) !important;
+            height: 44px !important;
+        }
+
+        .video-js .vjs-play-progress,
+        .video-js .vjs-volume-level {
+            background-color: var(--accent) !important;
+        }
+
+        .video-js .vjs-slider {
+            background-color: rgba(255,255,255,0.15) !important;
+        }
+
+        .video-js .vjs-load-progress div {
+            background: rgba(255,255,255,0.2) !important;
+        }
+
+        /* ── Loading state ── */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg);
+            z-index: 200;
+            gap: 16px;
+            transition: opacity 0.3s;
+        }
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* ── Branding footer ── */
+        .branding {
+            text-align: center;
+            padding: 8px;
+            font-size: 10px;
+            color: var(--text-muted);
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .branding a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        /* ── Error state ── */
+        .error-state {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        .error-state svg {
+            margin-bottom: 12px;
+        }
+        .error-state .error-title {
+            color: #ef4444;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .error-state .error-desc {
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        /* ── Mobile adjustments ── */
+        @media (max-width: 640px) {
+            .toolbar { padding: 8px 10px; gap: 6px; }
+            .toolbar-title { font-size: 13px; }
+            .toolbar-meta { display: none; }
+            .player-container { padding: 0; }
+            .video-js { border-radius: 0; max-height: calc(100vh - 90px); }
+            .video-js .vjs-big-play-button {
+                width: 60px !important;
+                height: 60px !important;
+                line-height: 60px !important;
+                font-size: 30px !important;
+            }
+            .hide-mobile { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text">Loading video…</div>
+</div>
+
+<!-- Toolbar -->
+<div class="toolbar">
+    <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+    </svg>
+    <span class="toolbar-title" title="{{ title }}">{{ title }}</span>
+    <span class="toolbar-meta hide-mobile" id="metaInfo"></span>
+
+    {% if allow_download %}
+    <div class="divider"></div>
+    <a href="{{ video_url }}" download class="toolbar-btn" title="Download video">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+    </a>
+    {% endif %}
+</div>
+
+<!-- Video Player -->
+<div class="player-container">
+    <video
+        id="videoPlayer"
+        class="video-js vjs-big-play-centered vjs-theme-fantasy"
+        controls
+        preload="auto"
+        {% if autoplay %}autoplay muted{% endif %}
+        {% if loop %}loop{% endif %}
+        data-setup='{"fluid": true, "responsive": true}'
+    >
+        <source src="{{ video_url }}" type="{{ mime_type }}">
+        <p class="vjs-no-js">
+            To view this video please enable JavaScript, and consider upgrading to a
+            web browser that <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>.
+        </p>
+    </video>
+</div>
+
+<!-- Branding -->
+<div class="branding">
+    Powered by <a href="https://qrgenie.pythonanywhere.com" target="_blank">QRGenie</a>
+</div>
+
+<script>
+    (function() {
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const metaInfo = document.getElementById('metaInfo');
+
+        // Format file size
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+            return (bytes / 1073741824).toFixed(2) + ' GB';
+        }
+
+        // Format duration
+        function formatDuration(seconds) {
+            if (!seconds || seconds <= 0) return '';
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            if (h > 0) return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+            return m + ':' + String(s).padStart(2, '0');
+        }
+
+        // Set meta info
+        const fileSize = {{ file_size|default:"0" }};
+        const duration = {{ duration|default:"0" }};
+        const parts = [];
+        if (duration > 0) parts.push(formatDuration(duration));
+        if (fileSize > 0) parts.push(formatSize(fileSize));
+        if (parts.length) metaInfo.textContent = parts.join(' · ');
+
+        // Initialize Video.js
+        var player = videojs('videoPlayer', {
+            fluid: true,
+            responsive: true,
+            playbackRates: [0.5, 1, 1.25, 1.5, 2],
+            controlBar: {
+                children: [
+                    'playToggle',
+                    'volumePanel',
+                    'currentTimeDisplay',
+                    'timeDivider',
+                    'durationDisplay',
+                    'progressControl',
+                    'playbackRateMenuButton',
+                    'pictureInPictureToggle',
+                    'fullscreenToggle'
+                ]
+            }
+        });
+
+        // Hide loading when player is ready
+        player.ready(function() {
+            loadingOverlay.classList.add('hidden');
+        });
+
+        // Hide loading on first play even if ready delays
+        player.on('loadeddata', function() {
+            loadingOverlay.classList.add('hidden');
+        });
+
+        // Error handling
+        player.on('error', function() {
+            loadingOverlay.innerHTML = '<div class="error-state">' +
+                '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">' +
+                '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>' +
+                '</svg>' +
+                '<p class="error-title">Failed to load video</p>' +
+                '<p class="error-desc">The video may be corrupted, too large, or in an unsupported format.</p>' +
+                '</div>';
+            loadingOverlay.classList.remove('hidden');
+        });
+
+        {% if not allow_download %}
+        // Disable right-click download if not allowed
+        document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+        {% endif %}
+    })();
+</script>
+
+</body>
+</html>

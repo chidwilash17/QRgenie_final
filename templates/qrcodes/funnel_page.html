@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ title|default:"Welcome" }}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--brand:{{ brand_color|default:"#6366f1" }}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+.wrapper{max-width:520px;width:100%;padding:24px 16px;flex:1;display:flex;flex-direction:column}
+.progress-bar-wrap{width:100%;height:6px;background:#1e293b;border-radius:3px;margin-bottom:24px;overflow:hidden}
+.progress-bar-fill{height:100%;background:var(--brand);border-radius:3px;transition:width .4s ease}
+.step-counter{text-align:center;font-size:13px;color:#94a3b8;margin-bottom:16px}
+.card{background:#1e293b;border-radius:16px;padding:28px 24px;flex:1;display:flex;flex-direction:column;animation:fadeIn .35s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.card h2{font-size:22px;font-weight:700;color:#f8fafc;margin-bottom:12px}
+.card .body{font-size:15px;line-height:1.7;color:#cbd5e1;flex:1;white-space:pre-line}
+.card .body img{max-width:100%;border-radius:10px;margin:14px 0}
+.step-img{width:100%;max-height:280px;object-fit:cover;border-radius:10px;margin-bottom:16px}
+.btn-row{display:flex;gap:10px;margin-top:24px}
+.btn{flex:1;padding:14px 0;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary{background:var(--brand);color:#fff}
+.btn-primary:hover{filter:brightness(1.15)}
+.btn-secondary{background:#334155;color:#e2e8f0}
+.btn-secondary:hover{background:#475569}
+.done-wrap{text-align:center;padding:40px 20px}
+.done-wrap .check{font-size:56px;margin-bottom:16px}
+.done-wrap h2{font-size:24px;margin-bottom:8px;color:#f8fafc}
+.done-wrap p{color:#94a3b8;font-size:15px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <!-- Progress bar -->
+  <div class="progress-bar-wrap {{ show_progress_bar|yesno:',' }}hidden" id="progressWrap">
+    <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+  </div>
+  <div class="step-counter {{ show_progress_bar|yesno:',' }}hidden" id="stepCounter"></div>
+
+  <!-- Step card -->
+  <div class="card" id="stepCard">
+    <img class="step-img hidden" id="stepImg" src="" alt="">
+    <h2 id="stepTitle"></h2>
+    <div class="body" id="stepBody"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary hidden" id="btnBack">Back</button>
+      <button class="btn btn-primary" id="btnNext">Next</button>
+    </div>
+  </div>
+
+  <!-- Completed card -->
+  <div class="card done-wrap hidden" id="doneCard">
+    <div class="check">&#10003;</div>
+    <h2>All Done!</h2>
+    <p>You've completed all steps.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  var STEPS = {{ steps_json|safe }};
+  var ALLOW_BACK = {{ allow_back|yesno:"true,false" }};
+  var TRACK_URL = "{{ track_url }}";
+  var current = 0;
+  var total = STEPS.length;
+
+  // Session key
+  var sk = sessionStorage.getItem('_fsk');
+  if(!sk){ sk = Math.random().toString(36).slice(2)+Date.now().toString(36); sessionStorage.setItem('_fsk', sk); }
+
+  var card = document.getElementById('stepCard');
+  var done = document.getElementById('doneCard');
+  var title = document.getElementById('stepTitle');
+  var body = document.getElementById('stepBody');
+  var img = document.getElementById('stepImg');
+  var btnNext = document.getElementById('btnNext');
+  var btnBack = document.getElementById('btnBack');
+  var progressFill = document.getElementById('progressFill');
+  var stepCounter = document.getElementById('stepCounter');
+
+  function render(){
+    if(current >= total){ showDone(); return; }
+    var s = STEPS[current];
+    title.textContent = s.title || '';
+    body.innerHTML = s.content || '';
+    if(s.image_url){img.src=s.image_url;img.classList.remove('hidden');}else{img.classList.add('hidden');}
+    // button text
+    if(current === total - 1){
+      btnNext.textContent = s.button_text || 'Finish';
+    } else {
+      btnNext.textContent = s.button_text || 'Next';
+    }
+    // back button
+    if(ALLOW_BACK && current > 0){btnBack.classList.remove('hidden');}else{btnBack.classList.add('hidden');}
+    // progress
+    var pct = Math.round(((current + 1) / total) * 100);
+    progressFill.style.width = pct + '%';
+    stepCounter.textContent = 'Step ' + (current+1) + ' of ' + total;
+    // animation
+    card.style.animation = 'none';
+    card.offsetHeight;
+    card.style.animation = 'fadeIn .35s ease';
+
+    track(false);
+  }
+
+  function showDone(){
+    card.classList.add('hidden');
+    done.classList.remove('hidden');
+    progressFill.style.width = '100%';
+    stepCounter.textContent = 'Completed';
+    track(true);
+    // If last step has a button_url, redirect after short delay
+    var lastStep = STEPS[total-1];
+    if(lastStep && lastStep.button_url){
+      setTimeout(function(){ window.location.href = lastStep.button_url; }, 1200);
+    }
+  }
+
+  function track(completed){
+    try{
+      var fd = new FormData();
+      fd.append('session_key', sk);
+      fd.append('current_step', current);
+      if(completed) fd.append('is_completed', 'true');
+      fetch(TRACK_URL, {method:'POST', body:fd});
+    }catch(e){}
+  }
+
+  btnNext.addEventListener('click', function(){
+    // if last step has button_url, go there directly
+    if(current === total - 1 && STEPS[current].button_url){
+      track(true);
+      window.location.href = STEPS[current].button_url;
+      return;
+    }
+    current++;
+    render();
+  });
+  btnBack.addEventListener('click', function(){
+    if(current > 0){ current--; render(); }
+  });
+
+  if(total === 0){
+    title.textContent = 'No steps configured';
+    body.textContent = 'This funnel has no content yet.';
+    btnNext.classList.add('hidden');
+  } else {
+    render();
+  }
+})();
+</script>
+</body>
+</html>

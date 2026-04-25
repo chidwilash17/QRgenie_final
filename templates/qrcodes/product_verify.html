@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Product Verification — {{ product_name }}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#0f172a;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#1e293b;border-radius:24px;max-width:440px;width:100%;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.5)}
+.header{padding:32px 28px 20px;text-align:center;position:relative}
+.header::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:{{ brand_color }}}
+.shield{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:32px}
+.product-name{font-size:20px;font-weight:700;color:#f1f5f9;margin-bottom:4px}
+.manufacturer{color:#94a3b8;font-size:13px}
+.product-img{width:80px;height:80px;border-radius:16px;object-fit:cover;margin:16px auto 0;display:block;border:2px solid rgba(255,255,255,.1)}
+.body{padding:0 28px 28px}
+.serial-input{width:100%;background:#0f172a;border:2px solid #334155;border-radius:14px;padding:14px 16px;color:#f1f5f9;font-size:16px;font-family:monospace;letter-spacing:1px;text-align:center;outline:none;transition:border-color .2s}
+.serial-input:focus{border-color:{{ brand_color }}}
+.serial-input::placeholder{color:#475569;letter-spacing:0;font-family:inherit}
+.verify-btn{display:block;width:100%;margin-top:16px;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;transition:transform .15s,opacity .15s}
+.verify-btn:hover{transform:translateY(-1px)}
+.verify-btn:active{transform:scale(.98)}
+.verify-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.result{margin-top:20px;border-radius:16px;padding:20px;text-align:center;display:none}
+.result.show{display:block;animation:fadeUp .4s ease}
+.result-icon{font-size:48px;margin-bottom:12px}
+.result-title{font-size:18px;font-weight:700;margin-bottom:6px}
+.result-desc{font-size:13px;line-height:1.5}
+.result-meta{margin-top:12px;font-size:12px;color:#94a3b8}
+.result-meta span{display:block;margin-top:3px}
+.result.authentic{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25)}
+.result.authentic .result-title{color:#4ade80}
+.result.authentic .result-desc{color:#86efac}
+.result.counterfeit{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25)}
+.result.counterfeit .result-title{color:#f87171}
+.result.counterfeit .result-desc{color:#fca5a5}
+.support-link{display:inline-block;margin-top:12px;color:{{ brand_color }};font-size:12px;text-decoration:none}
+.support-link:hover{text-decoration:underline}
+.scan-count{margin-top:16px;background:#0f172a;border-radius:12px;padding:12px 16px;display:none}
+.scan-count.show{display:flex;gap:12px;align-items:center;justify-content:center}
+.scan-stat{text-align:center}
+.scan-stat .val{font-size:18px;font-weight:700;color:#f1f5f9}
+.scan-stat .lbl{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.5px}
+.footer{text-align:center;padding:0 28px 20px;color:#475569;font-size:11px}
+.footer a{color:#818cf8;text-decoration:none}
+.spinner{display:none;width:20px;height:20px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.card{animation:fadeUp .5s ease}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <div class="shield" style="background:{{ brand_color }}20">🛡️</div>
+    <div class="product-name">{{ product_name }}</div>
+    {% if manufacturer %}<div class="manufacturer">by {{ manufacturer }}</div>{% endif %}
+    {% if product_image_url %}<img src="{{ product_image_url }}" alt="" class="product-img">{% endif %}
+  </div>
+
+  <div class="body">
+    <input type="text" id="serialInput" class="serial-input"
+           placeholder="Enter serial number…"
+           autocomplete="off" spellcheck="false"
+           {% if prefill_serial %}value="{{ prefill_serial }}"{% endif %}>
+
+    <button id="verifyBtn" class="verify-btn" style="background:{{ brand_color }}"
+            onclick="verify()">
+      <span id="btnText">Verify Authenticity</span>
+      <div id="btnSpinner" class="spinner"></div>
+    </button>
+
+    <div id="result" class="result">
+      <div id="resultIcon" class="result-icon"></div>
+      <div id="resultTitle" class="result-title"></div>
+      <div id="resultDesc" class="result-desc"></div>
+      <div id="resultMeta" class="result-meta"></div>
+    </div>
+
+    <div id="scanCount" class="scan-count">
+      <div class="scan-stat"><div class="val" id="totalScans">—</div><div class="lbl">Total Scans</div></div>
+      <div class="scan-stat"><div class="val" id="firstScan">—</div><div class="lbl">First Scanned</div></div>
+      <div class="scan-stat"><div class="val" id="serialStatus">—</div><div class="lbl">Status</div></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Powered by <a href="https://qrgenie.pythonanywhere.com" target="_blank">QR Genie</a>
+  </div>
+</div>
+
+<script>
+const API = '{{ verify_url }}';
+const supportUrl = '{{ support_url }}';
+const supportEmail = '{{ support_email }}';
+
+async function verify() {
+  const serial = document.getElementById('serialInput').value.trim();
+  if (!serial) return;
+
+  const btn = document.getElementById('verifyBtn');
+  const btnText = document.getElementById('btnText');
+  const spinner = document.getElementById('btnSpinner');
+  btn.disabled = true; btnText.style.display = 'none'; spinner.style.display = 'block';
+
+  try {
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({serial: serial})
+    });
+    const data = await res.json();
+
+    const result = document.getElementById('result');
+    const icon = document.getElementById('resultIcon');
+    const title = document.getElementById('resultTitle');
+    const desc = document.getElementById('resultDesc');
+    const meta = document.getElementById('resultMeta');
+
+    result.className = 'result show ' + (data.authentic ? 'authentic' : 'counterfeit');
+    icon.textContent = data.authentic ? '✅' : '⚠️';
+    title.textContent = data.authentic ? 'Authentic Product' : 'Verification Failed';
+    desc.textContent = data.reason || '';
+
+    let metaHtml = '';
+    if (data.serial_number) metaHtml += '<span>Serial: ' + data.serial_number + '</span>';
+    if (data.product_name) metaHtml += '<span>Product: ' + data.product_name + '</span>';
+    if (!data.authentic && (supportUrl || supportEmail)) {
+      metaHtml += '<br>';
+      if (supportUrl) metaHtml += '<a href="' + supportUrl + '" class="support-link" target="_blank">Contact Support →</a> ';
+      if (supportEmail) metaHtml += '<a href="mailto:' + supportEmail + '" class="support-link">Email Support</a>';
+    }
+    meta.innerHTML = metaHtml;
+
+    // Show scan stats
+    if (data.total_scans !== undefined) {
+      const sc = document.getElementById('scanCount');
+      sc.className = 'scan-count show';
+      document.getElementById('totalScans').textContent = data.total_scans;
+      document.getElementById('firstScan').textContent = data.first_scanned_at
+        ? new Date(data.first_scanned_at).toLocaleDateString() : 'Just now';
+      document.getElementById('serialStatus').textContent = (data.status || 'verified').toUpperCase();
+    }
+  } catch(e) {
+    alert('Network error. Please try again.');
+  } finally {
+    btn.disabled = false; btnText.style.display = 'inline'; spinner.style.display = 'none';
+  }
+}
+
+// Auto-verify if serial prefilled
+{% if prefill_serial %}
+  window.onload = function(){ verify(); };
+{% endif %}
+</script>
+</body>
+</html>

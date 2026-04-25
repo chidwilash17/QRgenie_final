@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Link Expired</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:#0a0e1a;color:#e2eaf3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    padding:24px;
+  }
+  .card{
+    background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+    border-radius:20px;padding:48px 36px;max-width:420px;width:100%;text-align:center;
+    box-shadow:0 8px 30px rgba(0,0,0,0.3);
+  }
+  .icon-circle{
+    width:72px;height:72px;border-radius:50%;margin:0 auto 20px;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(239,68,68,0.12);border:2px solid rgba(239,68,68,0.25);
+  }
+  .icon-circle svg{color:#ef4444}
+  h1{font-size:22px;font-weight:800;margin-bottom:8px;color:#f1f5f9}
+  .subtitle{font-size:14px;color:#94a3b8;line-height:1.6;margin-bottom:28px}
+  .reason{
+    display:inline-block;padding:6px 14px;border-radius:8px;font-size:12px;
+    font-weight:600;background:rgba(239,68,68,0.1);color:#f87171;
+    margin-bottom:24px;text-transform:uppercase;letter-spacing:0.5px;
+  }
+  .help-text{font-size:12px;color:#64748b;line-height:1.6;margin-top:20px}
+  .help-text strong{color:#94a3b8}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon-circle">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <polyline points="12 6 12 12 16 14"/>
+    </svg>
+  </div>
+
+  <h1>Link Expired</h1>
+
+  <p class="subtitle">
+    {% if reason == 'expired' %}
+      This link has expired. Short-lived links are only valid for a limited time after generation.
+    {% elif reason == 'already_used' %}
+      This single-use link has already been redeemed and cannot be used again.
+    {% elif reason == 'max_uses_reached' %}
+      This link has reached its maximum number of uses.
+    {% elif reason == 'slug_mismatch' %}
+      This link is not valid for the requested QR code.
+    {% else %}
+      This link is no longer valid. It may have expired or been revoked.
+    {% endif %}
+  </p>
+
+  <div class="reason">
+    {% if reason == 'expired' %}⏱ TIME EXPIRED
+    {% elif reason == 'already_used' %}🔒 ALREADY USED
+    {% elif reason == 'max_uses_reached' %}📊 MAX USES REACHED
+    {% else %}⚠ INVALID LINK
+    {% endif %}
+  </div>
+
+  <p class="help-text">
+    <strong>Need access?</strong> Scan the original QR code to generate a fresh link.
+    Each scan creates a new time-limited token.
+  </p>
+</div>
+</body>
+</html>

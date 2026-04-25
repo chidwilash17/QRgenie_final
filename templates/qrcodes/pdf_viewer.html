@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{{ title }} — QRGenie PDF Viewer</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
+
+    <!-- PDF.js from CDN — latest stable -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.mjs" type="module"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.mjs" type="module"></script>
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --border: rgba(255,255,255,0.08);
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --accent: #2563eb;
+            --accent-glow: rgba(37,99,235,0.3);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Top bar ── */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            z-index: 100;
+        }
+
+        .toolbar-title {
+            flex: 1;
+            min-width: 0;
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .toolbar-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .toolbar-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .toolbar-btn:hover {
+            background: rgba(37,99,235,0.15);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .toolbar-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .page-indicator {
+            font-size: 12px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .page-input {
+            width: 40px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text);
+            text-align: center;
+            font-size: 12px;
+            padding: 2px;
+            outline: none;
+        }
+        .page-input:focus {
+            border-color: var(--accent);
+        }
+
+        .zoom-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .divider {
+            width: 1px;
+            height: 24px;
+            background: var(--border);
+            flex-shrink: 0;
+        }
+
+        /* ── Viewer container ── */
+        .viewer-container {
+            flex: 1;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            gap: 16px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .page-canvas {
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+            border-radius: 2px;
+            max-width: 100%;
+        }
+
+        /* ── Loading state ── */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg);
+            z-index: 200;
+            gap: 16px;
+            transition: opacity 0.3s;
+        }
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* ── Branding footer ── */
+        .branding {
+            text-align: center;
+            padding: 8px;
+            font-size: 10px;
+            color: var(--text-muted);
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .branding a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        /* ── Mobile adjustments ── */
+        @media (max-width: 640px) {
+            .toolbar { padding: 8px 10px; gap: 6px; }
+            .toolbar-title { font-size: 12px; }
+            .toolbar-meta { display: none; }
+            .viewer-container { padding: 8px; gap: 8px; }
+            .hide-mobile { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text">Loading PDF…</div>
+</div>
+
+<!-- Toolbar -->
+<div class="toolbar">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent); flex-shrink: 0;">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+    </svg>
+    <span class="toolbar-title" title="{{ title }}">{{ title }}</span>
+    <span class="toolbar-meta hide-mobile" id="metaInfo"></span>
+
+    <div class="divider hide-mobile"></div>
+
+    <!-- Page nav -->
+    <button class="toolbar-btn" id="prevBtn" title="Previous page" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <span class="page-indicator">
+        <input type="number" class="page-input" id="pageInput" value="1" min="1"> / <span id="totalPages">-</span>
+    </span>
+    <button class="toolbar-btn" id="nextBtn" title="Next page" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+
+    <div class="divider"></div>
+
+    <!-- Zoom -->
+    <button class="toolbar-btn" id="zoomOutBtn" title="Zoom out">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+    <span class="zoom-label" id="zoomLabel">100%</span>
+    <button class="toolbar-btn" id="zoomInBtn" title="Zoom in">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+    <button class="toolbar-btn hide-mobile" id="fitWidthBtn" title="Fit width">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+    </button>
+
+    {% if allow_download %}
+    <div class="divider"></div>
+    <a href="{{ pdf_url }}" download class="toolbar-btn" title="Download PDF" style="text-decoration:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </a>
+    {% endif %}
+</div>
+
+<!-- PDF pages rendered here -->
+<div class="viewer-container" id="viewerContainer"></div>
+
+<!-- Branding -->
+<div class="branding">
+    Powered by <a href="https://qrgenie.pythonanywhere.com" target="_blank">QRGenie</a>
+</div>
+
+<script type="module">
+    // ── PDF.js setup ──
+    const pdfjsLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.mjs');
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.mjs';
+
+    const PDF_URL = '{{ pdf_url|escapejs }}';
+
+    const container = document.getElementById('viewerContainer');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const pageInput = document.getElementById('pageInput');
+    const totalPagesEl = document.getElementById('totalPages');
+    const zoomInBtn = document.getElementById('zoomInBtn');
+    const zoomOutBtn = document.getElementById('zoomOutBtn');
+    const fitWidthBtn = document.getElementById('fitWidthBtn');
+    const zoomLabel = document.getElementById('zoomLabel');
+    const metaInfo = document.getElementById('metaInfo');
+
+    let pdfDoc = null;
+    let currentPage = 1;
+    let totalPages = 0;
+    let scale = 1.0;
+    let renderingPages = new Set();
+    let renderedPages = new Map(); // page num → canvas element
+
+    // ── Load PDF ──
+    async function loadPDF() {
+        try {
+            const loadingTask = pdfjsLib.getDocument({
+                url: PDF_URL,
+                cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/cmaps/',
+                cMapPacked: true,
+            });
+
+            pdfDoc = await loadingTask.promise;
+            totalPages = pdfDoc.numPages;
+            totalPagesEl.textContent = totalPages;
+            pageInput.max = totalPages;
+
+            metaInfo.textContent = `${totalPages} page${totalPages !== 1 ? 's' : ''}`;
+
+            prevBtn.disabled = false;
+            nextBtn.disabled = false;
+
+            // Auto fit width on load
+            await autoFitWidth();
+
+            // Render all visible pages
+            await renderAllPages();
+
+            loadingOverlay.classList.add('hidden');
+        } catch (err) {
+            console.error('PDF load error:', err);
+            loadingOverlay.innerHTML = `
+                <div style="text-align:center;padding:20px;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" style="margin-bottom:12px;">
+                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <p style="color:#ef4444;font-size:14px;font-weight:600;margin-bottom:4px;">Failed to load PDF</p>
+                    <p style="color:var(--text-muted);font-size:12px;">The document may be corrupted or unavailable.</p>
+                </div>`;
+        }
+    }
+
+    // ── Render a single page ──
+    async function renderPage(pageNum) {
+        if (renderingPages.has(pageNum)) return;
+        renderingPages.add(pageNum);
+
+        try {
+            const page = await pdfDoc.getPage(pageNum);
+            const viewport = page.getViewport({ scale });
+
+            const canvas = document.createElement('canvas');
+            canvas.className = 'page-canvas';
+            canvas.dataset.page = pageNum;
+            canvas.width = Math.floor(viewport.width * (window.devicePixelRatio || 1));
+            canvas.height = Math.floor(viewport.height * (window.devicePixelRatio || 1));
+            canvas.style.width = Math.floor(viewport.width) + 'px';
+            canvas.style.height = Math.floor(viewport.height) + 'px';
+
+            const ctx = canvas.getContext('2d');
+            ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+
+            await page.render({
+                canvasContext: ctx,
+                viewport: viewport,
+            }).promise;
+
+            // Remove old canvas for this page if exists
+            const old = renderedPages.get(pageNum);
+            if (old && old.parentNode) old.parentNode.removeChild(old);
+
+            renderedPages.set(pageNum, canvas);
+            return canvas;
+        } finally {
+            renderingPages.delete(pageNum);
+        }
+    }
+
+    // ── Render all pages (continuous scroll mode) ──
+    async function renderAllPages() {
+        container.innerHTML = '';
+        renderedPages.clear();
+
+        // For performance on mobile, render pages lazily
+        // First render current page and neighbors
+        const pagesToRender = [];
+        for (let i = 1; i <= totalPages; i++) {
+            pagesToRender.push(i);
+        }
+
+        // Render in batches for large PDFs
+        const BATCH_SIZE = 3;
+        for (let b = 0; b < pagesToRender.length; b += BATCH_SIZE) {
+            const batch = pagesToRender.slice(b, b + BATCH_SIZE);
+            const canvases = await Promise.all(batch.map(p => renderPage(p)));
+
+            canvases.forEach(canvas => {
+                if (canvas) container.appendChild(canvas);
+            });
+
+            // Let browser breathe between batches for heavy PDFs
+            if (b + BATCH_SIZE < pagesToRender.length) {
+                await new Promise(r => setTimeout(r, 10));
+            }
+        }
+
+        updatePageFromScroll();
+    }
+
+    // ── Auto fit width ──
+    async function autoFitWidth() {
+        if (!pdfDoc) return;
+        const page = await pdfDoc.getPage(1);
+        const viewport = page.getViewport({ scale: 1.0 });
+        const containerWidth = container.clientWidth - 40; // padding
+        scale = containerWidth / viewport.width;
+        scale = Math.max(0.5, Math.min(scale, 3.0));
+        updateZoomLabel();
+    }
+
+    function updateZoomLabel() {
+        zoomLabel.textContent = Math.round(scale * 100) + '%';
+    }
+
+    // ── Page tracking from scroll ──
+    function updatePageFromScroll() {
+        const scrollTop = container.scrollTop;
+        let accumulated = 0;
+        for (let i = 1; i <= totalPages; i++) {
+            const canvas = renderedPages.get(i);
+            if (!canvas) continue;
+            accumulated += canvas.offsetHeight + 16; // gap
+            if (accumulated > scrollTop + 100) {
+                currentPage = i;
+                pageInput.value = i;
+                prevBtn.disabled = i <= 1;
+                nextBtn.disabled = i >= totalPages;
+                return;
+            }
+        }
+    }
+
+    container.addEventListener('scroll', () => {
+        requestAnimationFrame(updatePageFromScroll);
+    });
+
+    // ── Scroll to page ──
+    function scrollToPage(num) {
+        num = Math.max(1, Math.min(num, totalPages));
+        currentPage = num;
+        pageInput.value = num;
+        const canvas = renderedPages.get(num);
+        if (canvas) {
+            canvas.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        prevBtn.disabled = num <= 1;
+        nextBtn.disabled = num >= totalPages;
+    }
+
+    // ── Event handlers ──
+    prevBtn.addEventListener('click', () => scrollToPage(currentPage - 1));
+    nextBtn.addEventListener('click', () => scrollToPage(currentPage + 1));
+
+    pageInput.addEventListener('change', () => {
+        const num = parseInt(pageInput.value, 10);
+        if (num >= 1 && num <= totalPages) scrollToPage(num);
+    });
+    pageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const num = parseInt(pageInput.value, 10);
+            if (num >= 1 && num <= totalPages) scrollToPage(num);
+        }
+    });
+
+    zoomInBtn.addEventListener('click', async () => {
+        scale = Math.min(scale + 0.25, 4.0);
+        updateZoomLabel();
+        await renderAllPages();
+    });
+
+    zoomOutBtn.addEventListener('click', async () => {
+        scale = Math.max(scale - 0.25, 0.25);
+        updateZoomLabel();
+        await renderAllPages();
+    });
+
+    fitWidthBtn.addEventListener('click', async () => {
+        await autoFitWidth();
+        await renderAllPages();
+    });
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        if (e.target === pageInput) return;
+        if (e.key === 'ArrowLeft' || e.key === 'PageUp') scrollToPage(currentPage - 1);
+        if (e.key === 'ArrowRight' || e.key === 'PageDown') scrollToPage(currentPage + 1);
+        if (e.key === '+' || e.key === '=') { zoomInBtn.click(); }
+        if (e.key === '-') { zoomOutBtn.click(); }
+    });
+
+    // ── Disable right-click download if not allowed ──
+    {% if not allow_download %}
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
+    {% endif %}
+
+    // ── Start ──
+    loadPDF();
+</script>
+
+</body>
+</html>
